@@ -612,18 +612,28 @@ async def cmd_cancel(message: Message):
 
 # ── Admin reply (foydalanuvchiga javob) — handle_text'dan OLDIN ro'yxatdan
 #     o'tkazilishi shart, aks holda admin javobi oddiy matn sifatida tutilib qoladi.
-@dp.message(F.reply_to_message & F.from_user.id.func(lambda uid: uid == ADMIN_ID))
+#
+#     MUHIM: bu handler faqat admin ANIQ o'sha "🔔 Янги уланиш сўрови!" /
+#     "📩 Янги фидбек!" bildirishnomasiga reply qilganda ishga tushadi.
+#     Aks holda (masalan, telefonda tasodifan swipe-to-reply ishlab ketib,
+#     pastki klaviatura tugmasi yoki oddiy xabar "reply" sifatida yuborilib
+#     qolsa) — bu handler unga aralashmaydi, xabar oddiy matn sifatida
+#     handle_text'ga o'tadi va navigatsiya normal davom etadi.
+def _is_reply_to_notification(message: Message) -> bool:
+    if message.from_user.id != ADMIN_ID or not message.reply_to_message:
+        return False
+    orig = message.reply_to_message.text or message.reply_to_message.caption or ""
+    return bool(re.search(r"🆔 (\d+)", orig))
+
+@dp.message(_is_reply_to_notification)
 async def admin_reply(message: Message):
-    orig = message.reply_to_message.text or ""
+    orig = message.reply_to_message.text or message.reply_to_message.caption or ""
     m = re.search(r"🆔 (\d+)", orig)
-    if not m:
-        await message.answer("⚠️ User ID топилмади. Фойдаланувчи хабарини reply қилинг.")
-        return
     target_uid  = int(m.group(1))
     target_lang = get_lang(target_uid)
     prefix = "👨‍💼 <b>Админ жавоби:</b>\n\n" if target_lang == "uz" else "👨‍💼 <b>Ответ администратора:</b>\n\n"
     try:
-        await bot.send_message(target_uid, prefix + message.text)
+        await bot.send_message(target_uid, prefix + (message.text or message.caption or ""))
         await message.answer("✅ Жавоб юборилди!")
     except Exception as e:
         await message.answer(f"❌ Хато: {e}")
