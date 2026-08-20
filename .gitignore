@@ -1,0 +1,9 @@
+__pycache__/
+*.py[cod]
+*.pyo
+.env
+*.xlsx
+*.xls
+converter.py
+quiz_converter.py
+.DS_Store
